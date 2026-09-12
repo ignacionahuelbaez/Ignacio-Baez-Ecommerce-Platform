@@ -6,10 +6,13 @@ import { formatDate } from "@/lib/format";
 
 const STATUS_COLOR: Record<OrderStatus, "primary" | "success" | "warning" | "error" | undefined> = {
   [OrderStatus.PENDING]: "warning",
+  [OrderStatus.PAYMENT_PENDING]: "warning",
+  [OrderStatus.PAID]: "primary",
   [OrderStatus.PROCESSING]: "warning",
   [OrderStatus.SHIPPED]: "primary",
   [OrderStatus.DELIVERED]: "success",
   [OrderStatus.CANCELLED]: "error",
+  [OrderStatus.REFUNDED]: "error",
 };
 
 interface OrderCardProps {

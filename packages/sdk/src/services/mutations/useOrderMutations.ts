@@ -34,6 +34,19 @@ export function useUpdateOrderStatus() {
   });
 }
 
+export function useCreatePaymentPreference() {
+  const { client } = useApiClient();
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await client.post<{ preferenceId: string; initPoint: string }>(
+        `/api/orders/${orderId}/payment-preference`,
+      );
+      return response.data;
+    },
+  });
+}
+
 export function useCancelOrder() {
   const { client } = useApiClient();
   const queryClient = useQueryClient();

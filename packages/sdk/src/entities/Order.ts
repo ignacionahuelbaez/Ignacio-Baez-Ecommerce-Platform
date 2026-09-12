@@ -3,10 +3,13 @@ import { Product, ProductVariant } from './Product';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
+  PAYMENT_PENDING = 'PAYMENT_PENDING',
+  PAID = 'PAID',
   PROCESSING = 'PROCESSING',
   SHIPPED = 'SHIPPED',
   DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED',
+  REFUNDED = 'REFUNDED',
 }
 
 export interface Order {

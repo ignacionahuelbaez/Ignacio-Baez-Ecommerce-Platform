@@ -128,6 +128,10 @@ export const createApiClient = (config: ApiClientConfig): AxiosInstance => {
 
 /**
  * Token storage helpers
+ *
+ * `is_authenticated` below is only a UX signal for Next.js middleware route-gating
+ * (apps/web/middleware.ts) — it is not verified server-side. The actual authorization
+ * boundary is the JWT sent as a Bearer token, validated by the API on every request.
  */
 let memoryToken: string | null = null;
 let memoryRefreshToken: string | null = null;

@@ -23,6 +23,17 @@ export class CartController {
     return await this.cartService.addToCart(user.id, data.productId, data.variantId || null, data.quantity);
   }
 
+  // Merges a guest (localStorage) cart into the user's server-side cart right after
+  // login/register, so items added before authenticating aren't lost.
+  @Post('merge')
+  @UseGuards(JwtAuthGuard)
+  async mergeGuestCart(
+    @CurrentUser() user: any,
+    @Body() data: { items: { productId: string; variantId?: string | null; quantity: number }[] },
+  ): Promise<any> {
+    return await this.cartService.mergeGuestCart(user.id, data.items || []);
+  }
+
   @Put('items/:itemId')
   @UseGuards(JwtAuthGuard)
   async updateCartItem(

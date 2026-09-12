@@ -126,6 +126,27 @@ export class CartService {
     return this.getCart(userId);
   }
 
+  async mergeGuestCart(
+    userId: string,
+    items: { productId: string; variantId?: string | null; quantity: number }[],
+  ) {
+    for (const item of items) {
+      if (!item.productId || !item.quantity || item.quantity <= 0) continue;
+
+      // Reuse addToCart's existing-item/product/variant validation so a stale or
+      // tampered guest cart entry can't silently fail or corrupt the server cart.
+      try {
+        await this.addToCart(userId, item.productId, item.variantId ?? null, item.quantity);
+      } catch {
+        // Skip items that no longer exist (deleted product/variant) instead of
+        // failing the whole merge over one stale guest-cart entry.
+        continue;
+      }
+    }
+
+    return this.getCart(userId);
+  }
+
   async updateCartItem(userId: string, itemId: string, quantity: number) {
     const cart = await this.getCart(userId);
 

@@ -2,8 +2,10 @@ import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { JwtAuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../user/user.decorator';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, UserRole } from '@prisma/client';
 
 @Resolver('Order')
 export class OrderResolver {
@@ -37,9 +39,14 @@ export class OrderResolver {
   }
 
   @Mutation('updateOrderStatus')
-  @UseGuards(JwtAuthGuard)
-  async updateOrderStatus(@Args('id') id: string, @Args('status') status: OrderStatus) {
-    return this.orderService.updateOrderStatus(id, status);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async updateOrderStatus(
+    @CurrentUser() user: any,
+    @Args('id') id: string,
+    @Args('status') status: OrderStatus,
+  ) {
+    return this.orderService.updateOrderStatus(id, status, user.id);
   }
 
   @Mutation('cancelOrder')
@@ -49,7 +56,8 @@ export class OrderResolver {
   }
 
   @Query('adminOrders')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getAdminOrders(
     @Args('skip') skip?: number,
     @Args('take') take?: number,

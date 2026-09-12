@@ -11,6 +11,10 @@ interface RegisterInput {
   lastName?: string;
 }
 
+interface RefreshInput {
+  refreshToken: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -25,6 +29,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   public async login(@Body() data: AuthDto): Promise<AuthType> {
     return await this.authService.validateUser(data);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  public async refresh(
+    @Body() input: RefreshInput,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    return await this.authService.refreshTokens(input.refreshToken);
   }
 }
 

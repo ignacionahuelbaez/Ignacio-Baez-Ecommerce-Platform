@@ -1,7 +1,10 @@
 import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 
 import { OrderService } from '@order/order.service';
 import { JwtAuthGuard } from '@auth/auth.guard';
+import { RolesGuard } from '@auth/roles.guard';
+import { Roles } from '@auth/roles.decorator';
 import { CurrentUser } from '@user/user.decorator';
 
 @Controller('orders')
@@ -39,12 +42,14 @@ export class OrderController {
   }
 
   @Put(':id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async updateOrderStatus(
+    @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() data: { status: string },
   ): Promise<any> {
-    return await this.orderService.updateOrderStatus(id, data.status as any);
+    return await this.orderService.updateOrderStatus(id, data.status as any, user.id);
   }
 
   @Put(':id/cancel')
@@ -54,7 +59,8 @@ export class OrderController {
   }
 
   @Get('admin/all')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getAllOrders(@Query('page') page?: number, @Query('limit') limit?: number): Promise<any> {
     return await this.orderService.getAllOrders(page, limit);
   }

@@ -1,55 +1,77 @@
-export interface BrandingConfig {
-  store: {
-    name: string;
-    tagline: string;
-    description: string;
-    logoText: string;
-    logoAbbrev: string;
-    logoUrl?: string;
-  };
-  contact: {
-    email: string;
-    phone?: string;
-    address?: string;
-  };
-  locale: {
-    language: string;
-    currency: string;
-  };
-  shipping: {
-    freeShippingThreshold: number;
-    standardFee: number;
-    expressFee: number;
-    overnightFee: number;
-    standardDays: string;
-    expressDays: string;
-    overnightCutoff: string;
-    internationalDays: string;
-    processingCutoff: string;
-  };
-  policies: {
-    returnWindowDays: number;
-    refundProcessingDays: string;
-    refundCreditDays: string;
-  };
-  social: {
-    facebook?: string;
-    twitter?: string;
-    instagram?: string;
-  };
-  features: {
-    newsletter: boolean;
-    reviews: boolean;
-    wishlist: boolean;
-    darkMode: boolean;
-  };
-  theme: {
-    primaryColor: string;
-    primaryColorDark: string;
-  };
+import { z } from "zod";
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "must be a 6-digit hex color, e.g. #0284c7");
+
+const brandingSchema = z.object({
+  store: z.object({
+    name: z.string().min(1),
+    tagline: z.string().min(1),
+    description: z.string().min(1),
+    logoText: z.string().min(1),
+    logoAbbrev: z.string().min(1),
+    logoUrl: z.string().url().optional(),
+  }),
+  contact: z.object({
+    email: z.string().email(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+  }),
+  locale: z.object({
+    language: z.string().min(2),
+    currency: z.string().length(3, "must be a 3-letter ISO currency code, e.g. USD"),
+  }),
+  shipping: z.object({
+    freeShippingThreshold: z.number().nonnegative(),
+    standardFee: z.number().nonnegative(),
+    expressFee: z.number().nonnegative(),
+    overnightFee: z.number().nonnegative(),
+    standardDays: z.string().min(1),
+    expressDays: z.string().min(1),
+    overnightCutoff: z.string().min(1),
+    internationalDays: z.string().min(1),
+    processingCutoff: z.string().min(1),
+  }),
+  policies: z.object({
+    returnWindowDays: z.number().int().nonnegative(),
+    refundProcessingDays: z.string().min(1),
+    refundCreditDays: z.string().min(1),
+  }),
+  social: z.object({
+    facebook: z.string().url().optional(),
+    twitter: z.string().url().optional(),
+    instagram: z.string().url().optional(),
+  }),
+  features: z.object({
+    newsletter: z.boolean(),
+    reviews: z.boolean(),
+    wishlist: z.boolean(),
+    darkMode: z.boolean(),
+  }),
+  theme: z.object({
+    primaryColor: hexColor,
+    primaryColorDark: hexColor,
+  }),
+});
+
+export type BrandingConfig = z.infer<typeof brandingSchema>;
+
+// Fails fast (at build/start time, not at some random page render) if a client's
+// branding.ts is missing a field or has the wrong shape — see docs/customization.md.
+function validateBranding(config: unknown): BrandingConfig {
+  const result = brandingSchema.safeParse(config);
+
+  if (!result.success) {
+    const details = result.error.issues
+      .map((issue) => `  - ${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("\n");
+
+    throw new Error(`Invalid branding config in apps/web/config/branding.ts:\n${details}`);
+  }
+
+  return result.data;
 }
 
-export const branding: BrandingConfig = {
+const rawBranding: BrandingConfig = {
   store: {
     name: "Berzerk",
     tagline: "Best Online Shopping Experience",
@@ -92,3 +114,5 @@ export const branding: BrandingConfig = {
     primaryColorDark: "#4ea9d8",
   },
 };
+
+export const branding: BrandingConfig = validateBranding(rawBranding);

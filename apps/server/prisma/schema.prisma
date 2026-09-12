@@ -52,6 +52,7 @@ enum PaymentMethod {
   BANK_TRANSFER
   CASH_ON_DELIVERY
   PIX
+  MERCADO_PAGO
 }
 
 enum ShipmentStatus {
@@ -392,11 +393,12 @@ model Order {
   billingAddress   Address @relation("BillingAddress", fields: [billingAddressId], references: [id])
   billingAddressId String
 
-  items      OrderItem[]
-  payments   Payment[]
-  shipments  Shipment[]
-  discount   Discount?   @relation(fields: [discountId], references: [id])
-  discountId String?
+  items         OrderItem[]
+  payments      Payment[]
+  shipments     Shipment[]
+  statusHistory OrderStatusHistory[]
+  discount      Discount?            @relation(fields: [discountId], references: [id])
+  discountId    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -405,6 +407,27 @@ model Order {
   @@index([status])
   @@index([orderNumber])
   @@map("orders")
+}
+
+// Append-only audit trail of order status transitions — who changed what, when.
+model OrderStatusHistory {
+  id String @id @default(uuid())
+
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+
+  // User id of the admin/customer who triggered the change; null for system-driven
+  // transitions (e.g. a future payment webhook marking an order PAID).
+  changedBy String?
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@map("order_status_history")
 }
 
 model OrderItem {

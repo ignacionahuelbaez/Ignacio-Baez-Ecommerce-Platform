@@ -16,10 +16,13 @@ const STATUS_OPTIONS: OrderStatus[] = [
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   [OrderStatus.PENDING]: "bg-warning-100 text-warning-700",
+  [OrderStatus.PAYMENT_PENDING]: "bg-warning-100 text-warning-700",
+  [OrderStatus.PAID]: "bg-primary-100 text-primary-700",
   [OrderStatus.PROCESSING]: "bg-primary-100 text-primary-700",
   [OrderStatus.SHIPPED]: "bg-gray-100 text-gray-700",
   [OrderStatus.DELIVERED]: "bg-success-100 text-success-700",
   [OrderStatus.CANCELLED]: "bg-error-100 text-error-700",
+  [OrderStatus.REFUNDED]: "bg-error-100 text-error-700",
 };
 
 const fmt = (n: number) => formatPrice(n);

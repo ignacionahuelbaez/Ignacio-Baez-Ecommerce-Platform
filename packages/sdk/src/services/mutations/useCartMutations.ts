@@ -46,6 +46,21 @@ export function useRemoveFromCart() {
   });
 }
 
+export function useMergeGuestCart() {
+  const { client } = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: AddToCartInput[]) => {
+      const response = await client.post<Cart>('/api/cart/merge', { items });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+  });
+}
+
 export function useClearCart() {
   const { client } = useApiClient();
   const queryClient = useQueryClient();

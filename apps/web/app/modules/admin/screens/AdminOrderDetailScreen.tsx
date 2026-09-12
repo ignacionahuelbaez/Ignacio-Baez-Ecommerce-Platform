@@ -14,10 +14,13 @@ const STATUS_OPTIONS = [
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   [OrderStatus.PENDING]: "Pending",
+  [OrderStatus.PAYMENT_PENDING]: "Payment Pending",
+  [OrderStatus.PAID]: "Paid",
   [OrderStatus.PROCESSING]: "Processing",
   [OrderStatus.SHIPPED]: "Shipped",
   [OrderStatus.DELIVERED]: "Delivered",
   [OrderStatus.CANCELLED]: "Cancelled",
+  [OrderStatus.REFUNDED]: "Refunded",
 };
 
 interface Props { orderId: string }

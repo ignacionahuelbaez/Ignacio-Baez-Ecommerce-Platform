@@ -2,16 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { Container, Card, Heading, Text, Stack } from "@react-shop/design-system";
-import { useRegister } from "@react-shop/sdk";
+import { useRegister, useMergeGuestCart } from "@react-shop/sdk";
+import { useGuestCart } from "../../../providers/GuestCartProvider";
 import { RegisterForm, RegisterFormData } from "../components";
 
 export function RegisterScreen() {
   const router = useRouter();
   const { mutate: register, isPending, error } = useRegister();
+  const { items: guestItems, clear: clearGuestCart } = useGuestCart();
+  const { mutate: mergeGuestCart } = useMergeGuestCart();
 
   const handleSubmit = (data: Omit<RegisterFormData, "confirmPassword">) => {
     register(data, {
       onSuccess: () => {
+        if (guestItems.length > 0) {
+          mergeGuestCart(
+            guestItems.map(({ productId, variantId, quantity }) => ({
+              productId,
+              variantId,
+              quantity,
+            })),
+            { onSuccess: () => clearGuestCart() },
+          );
+        }
         router.push("/");
       },
     });

@@ -3,12 +3,16 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
+import { resolveSsl } from './ssl.util';
+
 function buildPool(): Pool {
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
   if (!connectionString) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
+
+  const ssl = resolveSsl();
 
   // Parse the URL manually so pg never misinterprets usernames with dots
   // (e.g. postgres.PROJECT_REF in Supabase transaction pooler)
@@ -20,7 +24,7 @@ function buildPool(): Pool {
       host: url.hostname,
       port: parseInt(url.port || '5432', 10),
       database: url.pathname.replace(/^\//, ''),
-      ssl: { rejectUnauthorized: false },
+      ssl,
       max: 2,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 10_000,
@@ -29,7 +33,7 @@ function buildPool(): Pool {
     // Fallback: pass the string directly if URL parsing fails
     return new Pool({
       connectionString,
-      ssl: { rejectUnauthorized: false },
+      ssl,
       max: 2,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 10_000,

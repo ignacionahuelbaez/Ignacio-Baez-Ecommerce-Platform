@@ -10,6 +10,7 @@ import { User } from '@prisma/client';
 import { AuthDto } from '@auth/dto/auth.input';
 import { UserService } from '@user/user.service';
 import { AuthType } from '@auth/dto/auth.interface';
+import { sanitizeUser } from '@user/user.utils';
 
 interface RegisterInput {
   email: string;
@@ -17,6 +18,8 @@ interface RegisterInput {
   firstName?: string;
   lastName?: string;
 }
+
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || '7d';
 
 @Injectable()
 export class AuthService {
@@ -41,12 +44,11 @@ export class AuthService {
       lastName: input.lastName,
     });
 
-    // Generate JWT tokens
-    const accessToken = await this.generateJWT(user);
-    const refreshToken = await this.generateJWT(user); // TODO: Implement proper refresh token
+    const accessToken = await this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
 
     return {
-      user,
+      user: sanitizeUser(user),
       accessToken,
       refreshToken,
     };
@@ -65,24 +67,58 @@ export class AuthService {
       throw new UnauthorizedException('Incorrect Password');
     }
 
-    // Generate JWT tokens
-    const accessToken = await this.generateJWT(user);
-    const refreshToken = await this.generateJWT(user); // TODO: Implement proper refresh token
+    const accessToken = await this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
 
     return {
-      user,
+      user: sanitizeUser(user),
       accessToken,
       refreshToken,
     };
   }
 
-  public async generateJWT(user: User): Promise<string> {
-    const payload = { 
-      email: user.email, 
+  async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    let payload: { sub: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.REFRESH_SECRET || process.env.SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    let user: User;
+
+    try {
+      user = await this.userService.findById(payload.sub);
+    } catch {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return {
+      accessToken: await this.generateAccessToken(user),
+      // Rotate the refresh token on every use.
+      refreshToken: await this.generateRefreshToken(user),
+    };
+  }
+
+  public async generateAccessToken(user: User): Promise<string> {
+    const payload = {
+      email: user.email,
       sub: user.id,
       role: user.role,
     };
 
     return this.jwtService.signAsync(payload);
+  }
+
+  public async generateRefreshToken(user: User): Promise<string> {
+    const payload = { sub: user.id };
+
+    return this.jwtService.signAsync(payload, {
+      secret: process.env.REFRESH_SECRET || process.env.SECRET,
+      expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+    });
   }
 }

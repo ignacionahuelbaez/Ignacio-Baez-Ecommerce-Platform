@@ -6,10 +6,11 @@ import {
   useCart,
   useCreateAddress,
   useCreateOrder,
+  useCreatePaymentPreference,
   type Address,
   type Order,
 } from "@react-shop/sdk";
-import { AddressForm, OrderReview, OrderConfirmation, type AddressFormData } from "../components";
+import { AddressForm, OrderReview, type AddressFormData } from "../components";
 
 type CheckoutStep = "address" | "review" | "confirmation";
 
@@ -59,10 +60,13 @@ export function CheckoutScreen() {
   const { data: cart, isLoading: cartLoading } = useCart();
   const { mutate: createAddress, isPending: creatingAddress } = useCreateAddress();
   const { mutate: createOrder, isPending: creatingOrder } = useCreateOrder();
+  const { mutate: createPaymentPreference, isPending: creatingPayment } =
+    useCreatePaymentPreference();
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [shippingAddress, setShippingAddress] = useState<Address | null>(null);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const handleAddressSubmit = (data: AddressFormData) => {
     createAddress(
@@ -78,6 +82,7 @@ export function CheckoutScreen() {
 
   const handlePlaceOrder = () => {
     if (!shippingAddress) return;
+    setPaymentError(null);
 
     createOrder(
       {
@@ -87,7 +92,20 @@ export function CheckoutScreen() {
       {
         onSuccess: (order) => {
           setConfirmedOrder(order);
-          setStep("confirmation");
+
+          // Redirect to Mercado Pago's hosted checkout (Checkout Pro) to collect payment.
+          // The order stays PENDING until Mercado Pago's webhook confirms it was paid.
+          createPaymentPreference(order.id, {
+            onSuccess: (preference) => {
+              window.location.href = preference.initPoint;
+            },
+            onError: () => {
+              setPaymentError(
+                "We couldn't start the payment. Your order was saved — try again from your order history."
+              );
+              setStep("confirmation");
+            },
+          });
         },
       }
     );
@@ -139,12 +157,19 @@ export function CheckoutScreen() {
             shippingAddress={shippingAddress}
             onPlaceOrder={handlePlaceOrder}
             onBack={() => setStep("address")}
-            isLoading={creatingOrder}
+            isLoading={creatingOrder || creatingPayment}
           />
         )}
 
-        {step === "confirmation" && confirmedOrder && (
-          <OrderConfirmation order={confirmedOrder} />
+        {step === "confirmation" && confirmedOrder && paymentError && (
+          <div className="max-w-xl mx-auto text-center">
+            <Heading as="h2" size="2xl" className="mb-2">
+              Order saved — payment not started
+            </Heading>
+            <Text color="secondary" className="mb-6">
+              {paymentError}
+            </Text>
+          </div>
         )}
       </Card>
     </Container>

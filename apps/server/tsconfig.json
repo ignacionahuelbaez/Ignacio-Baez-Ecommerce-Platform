@@ -22,7 +22,8 @@
       "@category/*": ["./category/*"],
       "@cart/*": ["./cart/*"],
       "@order/*": ["./order/*"],
-      "@review/*": ["./review/*"]
+      "@review/*": ["./review/*"],
+      "@payment/*": ["./payment/*"]
     }
   },
   "exclude": [

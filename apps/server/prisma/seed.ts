@@ -3,6 +3,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
 
+import { resolveSsl } from '../src/prisma/ssl.util';
+
 // Create PostgreSQL connection pool
 // Prefer DIRECT_URL (bypasses PgBouncer) for seed operations,
 // fall back to DATABASE_URL for local dev where there's no DIRECT_URL.
@@ -12,7 +14,7 @@ const connectionString =
   process.env.POSTGRES_URL ||
   'postgresql://postgres:postgres@localhost:5432/react_ecommerce';
 
-const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const pool = new Pool({ connectionString, ssl: resolveSsl() });
 
 // Create Prisma adapter
 const adapter = new PrismaPg(pool);

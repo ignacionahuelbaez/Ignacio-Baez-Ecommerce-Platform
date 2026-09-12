@@ -1,27 +1,45 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UsePipes,
+  ForbiddenException,
+} from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 
 import { UserService } from '@user/user.service';
 import { CreateUserDto } from '@user/dto';
-import { User } from '@user/user.entity';
+import { sanitizeUser } from '@user/user.utils';
 
 import { ValidationPipe } from '@shared/pipes/validation.pipe';
 import { JwtAuthGuard } from '@auth/auth.guard';
+import { RolesGuard } from '@auth/roles.guard';
+import { Roles } from '@auth/roles.decorator';
 import { CurrentUser } from '@user/user.decorator';
+
+const isAdmin = (user: any) =>
+  user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
 @Controller('users')
 export class UserController {
   constructor(private userService: UserService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async findAll(@Query('role') role?: string): Promise<any[]> {
-    return await this.userService.findAll(0, 100, role);
+    const users = await this.userService.findAll(0, 100, role);
+    return users.map(sanitizeUser);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMe(@CurrentUser() user: any): Promise<any> {
-    return await this.userService.findById(user.id);
+    return sanitizeUser(await this.userService.findById(user.id));
   }
 
   @Get('me/addresses')
@@ -37,21 +55,27 @@ export class UserController {
   }
 
   @Get('email/:email')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async findByEmail(@Param('email') email: string): Promise<any> {
-    return await this.userService.findByEmail(email);
+    const user = await this.userService.findByEmail(email);
+    return user ? sanitizeUser(user) : user;
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async findById(@Param('id') id: string): Promise<any> {
-    return await this.userService.findById(id);
+  async findById(@CurrentUser() requester: any, @Param('id') id: string): Promise<any> {
+    if (requester.id !== id && !isAdmin(requester)) {
+      throw new ForbiddenException('Insufficient role to access this resource');
+    }
+
+    return sanitizeUser(await this.userService.findById(id));
   }
 
   @Post()
   @UsePipes(new ValidationPipe())
   async createUser(@Body() data: CreateUserDto): Promise<any> {
-    return await this.userService.create(data);
+    return sanitizeUser(await this.userService.create(data));
   }
 }
 

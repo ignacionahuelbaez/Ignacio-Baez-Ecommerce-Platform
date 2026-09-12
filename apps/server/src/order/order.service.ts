@@ -130,6 +130,8 @@ export class OrderService {
     // Clear cart after order creation
     await this.cartService.clearCart(userId);
 
+    await this.logStatusChange(order.id, null, OrderStatus.PENDING, userId);
+
     return order;
   }
 
@@ -218,6 +220,9 @@ export class OrderService {
           },
           orderBy: { createdAt: 'desc' },
         },
+        statusHistory: {
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -228,7 +233,7 @@ export class OrderService {
     return order;
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus) {
+  async updateOrderStatus(orderId: string, status: OrderStatus, changedBy?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -237,7 +242,7 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status },
       include: {
@@ -261,6 +266,22 @@ export class OrderService {
         shipments: true,
       },
     });
+
+    await this.logStatusChange(orderId, order.status, status, changedBy);
+
+    return updated;
+  }
+
+  private async logStatusChange(
+    orderId: string,
+    fromStatus: OrderStatus | null,
+    toStatus: OrderStatus,
+    changedBy?: string,
+    reason?: string,
+  ) {
+    await this.prisma.orderStatusHistory.create({
+      data: { orderId, fromStatus, toStatus, changedBy, reason },
+    });
   }
 
   async cancelOrder(userId: string, orderId: string, reason?: string) {
@@ -276,7 +297,7 @@ export class OrderService {
       throw new BadRequestException('Order cannot be cancelled');
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: OrderStatus.CANCELLED,
@@ -303,6 +324,10 @@ export class OrderService {
         shipments: true,
       },
     });
+
+    await this.logStatusChange(orderId, order.status, OrderStatus.CANCELLED, userId, reason);
+
+    return updated;
   }
 
   // Admin methods
